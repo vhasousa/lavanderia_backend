@@ -1,0 +1,7 @@
+ALTER TABLE clients
+DROP CONSTRAINT IF EXISTS fk_address;
+
+ALTER TABLE clients
+DROP COLUMN IF EXISTS address_id;
+
+DROP TABLE IF EXISTS address;

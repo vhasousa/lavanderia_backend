@@ -1,0 +1,34 @@
+# Binários compilados
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.bin
+*.o
+*.a
+
+# Pastas de dependências
+/vendor/
+
+# Cache do Go
+/bin/
+/pkg/
+
+# Arquivos de projeto do IDE
+.vscode/
+
+# Arquivos do sistema operacional
+.DS_Store
+Thumbs.db
+
+# Arquivos de configuração sensíveis
+.env
+.env.local
+
+# Cobertura de teste
+/coverage/
+
+# Arquivos gerados
+*.log
+*.tmp
