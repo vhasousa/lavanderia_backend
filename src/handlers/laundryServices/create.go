@@ -54,27 +54,27 @@ func CreateServicesHandler(db *sqlx.DB) http.HandlerFunc {
 		if newService.IsWeight && newService.Weight <= 0 {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"details": ValidationError{Field: "weight", Message: "When 'IsWeight' is true, 'Weight' should be positive number", Status: http.StatusBadRequest},
+				"details": ValidationError{Field: "weight", Message: "Quando opção por peso está marcado, o peso deve ser positivo.", Status: http.StatusBadRequest},
+				"error":   "Validation failed",
+			})
+			return
+		}
+
+		if len(newService.Items) == 0 {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"details": ValidationError{Field: "items", Message: "Serviço não pode ser cadastrado sem itens", Status: http.StatusBadRequest},
 				"error":   "Validation failed",
 			})
 			return
 		}
 
 		if newService.IsPiece {
-			if len(newService.Items) == 0 {
-				w.WriteHeader(http.StatusBadRequest)
-				json.NewEncoder(w).Encode(map[string]interface{}{
-					"details": ValidationError{Field: "items", Message: "When 'IsPiece' is true, at least one item must be specified", Status: http.StatusBadRequest},
-					"error":   "Validation failed",
-				})
-				return
-			}
-
 			for _, item := range newService.Items {
 				if item.ItemQuantity <= 0 {
 					w.WriteHeader(http.StatusBadRequest)
 					json.NewEncoder(w).Encode(map[string]interface{}{
-						"details": ValidationError{Field: "item_quantity", Message: "Each item's quantity must be a positive number when 'IsPiece' is true", Status: http.StatusBadRequest},
+						"details": ValidationError{Field: "item_quantity", Message: "A quantidade de cada item deve ser positiva", Status: http.StatusBadRequest},
 						"error":   "Validation failed",
 					})
 					return
@@ -131,7 +131,7 @@ func CreateServicesHandler(db *sqlx.DB) http.HandlerFunc {
 		if err != nil {
 			w.WriteHeader(http.StatusBadRequest)
 			json.NewEncoder(w).Encode(map[string]interface{}{
-				"details": ValidationError{Field: "total_price", Message: "Error calculanting total price", Status: http.StatusInternalServerError},
+				"details": ValidationError{Field: "total_price", Message: "Erro ao calcular preço total.", Status: http.StatusInternalServerError},
 				"error":   "Validation failed",
 			})
 			return
@@ -268,7 +268,7 @@ func validateEstimatedCompletionDate(date time.Time) error {
 
 	// Check if the date is in the past
 	if date.Before(currentTime) {
-		return fmt.Errorf("estimated completion date %s is in the past", date.Format("2006-01-02"))
+		return fmt.Errorf("A data estimada %s está no passado", date.Format("2006-01-02"))
 	}
 
 	// Assuming a threshold of 30 days in the future for example
