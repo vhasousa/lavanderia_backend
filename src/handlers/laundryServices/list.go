@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/jmoiron/sqlx"
 )
@@ -36,6 +37,7 @@ func ListServicesHandler(db *sqlx.DB) http.HandlerFunc {
 		pageStr := r.URL.Query().Get("page")
 		pageSizeStr := r.URL.Query().Get("pageSize")
 		searchTerm := r.URL.Query().Get("searchTerm")
+		status := r.URL.Query().Get("status")
 
 		// Default values for page and pageSize
 		page, pageSize := 1, 10
@@ -73,10 +75,26 @@ func ListServicesHandler(db *sqlx.DB) http.HandlerFunc {
 
 		// Construct the WHERE clause and arguments dynamically
 		whereClause := ""
+		whereConditions := []string{}
 		args := []interface{}{pageSize, (page - 1) * pageSize}
 		if searchTerm != "" {
-			whereClause = "WHERE to_tsvector('english', cli.first_name || ' ' || cli.last_name) @@ plainto_tsquery('english', $3)"
+			whereConditions = append(whereConditions, "to_tsvector('english', cli.first_name || ' ' || cli.last_name) @@ plainto_tsquery('english', $3)")
 			args = append(args, searchTerm)
+		}
+
+		if status != "" {
+			if searchTerm != "" {
+				// If searchTerm is also provided, status will use the next placeholder number
+				whereConditions = append(whereConditions, fmt.Sprintf("ls.status = $%d", len(args)+1))
+			} else {
+				// If only status is provided, it will use $3
+				whereConditions = append(whereConditions, "ls.status = $3")
+			}
+			args = append(args, status)
+		}
+
+		if len(whereConditions) > 0 {
+			whereClause = "WHERE " + strings.Join(whereConditions, " AND ")
 		}
 
 		// Construct the final query
