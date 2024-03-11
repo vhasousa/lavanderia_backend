@@ -10,4 +10,5 @@ type UserEntity struct {
 	Username  string    `json:"username" db:"username"`
 	Password  string    `json:"password" db:"password"`
 	IsAdmin   bool      `json:"is_admin" db:"is_admin"`
+	Role      bool      `json:"role" db:"role"`
 }
