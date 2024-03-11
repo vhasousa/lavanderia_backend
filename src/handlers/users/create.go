@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/crypto/bcrypt"
 
 	"lavanderia/entities"
 )
@@ -22,9 +23,15 @@ func CreateUserHandler(db *sqlx.DB) http.HandlerFunc {
 
 		// Insert the new user into the database
 
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newUser.Password), bcrypt.DefaultCost)
+		if err != nil {
+			http.Error(w, "Failed to encrypt password", http.StatusInternalServerError)
+			return
+		}
+
 		err = db.QueryRow(
-			"INSERT INTO users (first_name, last_name) VALUES ($1, $2) RETURNING id, first_name, last_name",
-			newUser.FirstName, newUser.LastName,
+			"INSERT INTO users (first_name, last_name, username, password, role) VALUES ($1, $2, $3, $4) RETURNING id, first_name, last_name",
+			newUser.FirstName, newUser.LastName, newUser.Username, hashedPassword, "Admin",
 		).Scan(&newUser.ID, &newUser.FirstName, &newUser.LastName)
 
 		if err != nil {

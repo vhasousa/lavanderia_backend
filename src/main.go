@@ -38,9 +38,14 @@ func main() {
 
 	routes := router.SetupRoutes(db)
 
+	appURL := os.Getenv("APP_URL")
+	appPort := os.Getenv("APP_PORT")
+
+	app := fmt.Sprintf("%s:%s", appURL, appPort)
+
 	// Configurar o CORS com as opções desejadas
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{"http://localhost:3000"}, // Adicione a origem da sua aplicação Next.js aqui.
+		AllowedOrigins: []string{app}, // Adicione a origem da sua aplicação Next.js aqui.
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
 		AllowedHeaders: []string{"Content-Type", "Authorization"},
 	})
