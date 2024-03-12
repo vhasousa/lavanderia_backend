@@ -5,44 +5,45 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
+	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
 )
 
-// ServiceItem represents an item in a laundry service
-type ServiceItem struct {
-	ID           string `json:"id"`
-	Name         string `json:"name"`
-	Observation  string `json:"observation"`
-	ItemQuantity int    `json:"item_quantity"`
-}
-
-// Service represents a laundry service including client and estimated completion date
-type Service struct {
-	ID                      string        `json:"id"`
-	Items                   []ServiceItem `json:"items"`
-	Status                  string        `json:"status"`
-	TotalPrice              float64       `json:"total_price"`
-	IsPaid                  bool          `json:"is_paid"`
-	ClientFirstName         string        `json:"client_first_name"`
-	ClientLastName          string        `json:"client_last_name"`
-	EstimatedCompletionDate string        `json:"estimated_completion_date"`
-}
-
-// ListServicesHandler handles the listing of all services with pagination
-func ListServicesHandler(db *sqlx.DB) http.HandlerFunc {
+// ListServicesByClientHandler handles the listing of all services with pagination
+func ListServicesByClientHandler(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Parse pagination parameters from query string
+
+		vars := mux.Vars(r)
+		clientIDStr, ok := vars["id"]
+		if !ok {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"details": ValidationError{Field: "id", Message: "client ID not provided in URL", Status: http.StatusBadRequest},
+				"error":   "Validation failed",
+			})
+			return
+		}
+
+		clientID, err := uuid.Parse(clientIDStr)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"details": ValidationError{Field: "id", Message: "Invalid client ID", Status: http.StatusBadRequest},
+				"error":   "Validation failed",
+			})
+			return
+		}
+
+		fmt.Print(clientID)
+
 		pageStr := r.URL.Query().Get("page")
 		pageSizeStr := r.URL.Query().Get("pageSize")
-		searchTerm := r.URL.Query().Get("searchTerm")
 		status := r.URL.Query().Get("status")
 
-		// Default values for page and pageSize
 		page, pageSize := 1, 10
 
-		// Override defaults if parameters are provided
 		if pageStr != "" {
 			if p, err := strconv.Atoi(pageStr); err == nil {
 				page = p
@@ -54,58 +55,38 @@ func ListServicesHandler(db *sqlx.DB) http.HandlerFunc {
 			}
 		}
 
-		// Calculate total number of records (consider adding a condition based on firstName and lastName)
 		var totalRecords int
-		countQuery := "SELECT COUNT(*) FROM laundry_services"
-		err := db.Get(&totalRecords, countQuery)
+		countQuery := "SELECT COUNT(*) FROM laundry_services WHERE client_id = $1"
+		err = db.Get(&totalRecords, countQuery, clientID)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		// Calculate total number of pages
-		totalPages := (totalRecords + pageSize - 1) / pageSize // Ensure rounding up
+		totalPages := (totalRecords + pageSize - 1) / pageSize
 
-		// Validate requested page number
 		if page > totalPages {
 			msg := fmt.Sprintf("Requested page exceeds total pages. Total pages available: %d", totalPages)
 			http.Error(w, msg, http.StatusBadRequest)
 			return
 		}
 
-		// Construct the WHERE clause and arguments dynamically
-		whereClause := ""
-		whereConditions := []string{}
-		args := []interface{}{pageSize, (page - 1) * pageSize}
-		if searchTerm != "" {
-			whereConditions = append(whereConditions, "to_tsvector('english', cli.first_name || ' ' || cli.last_name) @@ plainto_tsquery('english', $3)")
-			args = append(args, searchTerm)
-		}
+		whereClause := "WHERE ls.client_id = $1"
+		args := []interface{}{clientID, pageSize, (page - 1) * pageSize}
 
 		if status != "" {
-			if searchTerm != "" {
-				// If searchTerm is also provided, status will use the next placeholder number
-				whereConditions = append(whereConditions, fmt.Sprintf("ls.status = $%d", len(args)+1))
-			} else {
-				// If only status is provided, it will use $3
-				whereConditions = append(whereConditions, "ls.status = $3")
-			}
+
+			whereClause += fmt.Sprintf(" AND ls.status = $%d", len(args)+1)
 			args = append(args, status)
 		}
 
-		if len(whereConditions) > 0 {
-			whereClause = "WHERE " + strings.Join(whereConditions, " AND ")
-		}
-
-		// Construct the final query
 		query := fmt.Sprintf(`
             WITH TopServices AS (
                 SELECT ls.id
                 FROM laundry_services ls
-                JOIN clients cli ON ls.client_id = cli.id
                 %s
                 ORDER BY ls.created_at DESC
-                LIMIT $1 OFFSET $2
+                LIMIT $2 OFFSET $3
             )
             SELECT ls.id, li.id as item_id, li.name, lis.item_quantity, lis.observation, ls.status, ls.is_paid, ls.total_price,
                    cli.first_name AS client_first_name, cli.last_name AS client_last_name, ls.estimated_completion_date
@@ -117,7 +98,6 @@ func ListServicesHandler(db *sqlx.DB) http.HandlerFunc {
             ORDER BY ls.created_at DESC
         `, whereClause)
 
-		// Execute the SQL query with dynamic arguments
 		rows, err := db.Queryx(query, args...)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -181,7 +161,6 @@ func ListServicesHandler(db *sqlx.DB) http.HandlerFunc {
 			"services":    result,
 			"page":        page,
 			"total_pages": totalPages,
-			"search_term": searchTerm,
 		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
