@@ -77,7 +77,7 @@ func TestDeleteItemServiceHandler(t *testing.T) {
 		}
 
 		var itemToDelete string
-		err = db.Get(&itemToDelete, "SELECT id FROM laundry_items WHERE name = $1", "Item 1")
+		err = db.Get(&itemToDelete, "SELECT id FROM laundry_items WHERE name = $1 LIMIT 1", "Item 1")
 
 		if err != nil {
 			t.Fatalf("Failed to fetch created service: %v", err)
@@ -119,7 +119,7 @@ func TestDeleteItemServiceHandler(t *testing.T) {
 			serviceID := ids["serviceID"]
 			itemID := ids["itemID"]
 
-			req, _ := http.NewRequest("PATCH", fmt.Sprintf("/services/%s/items/%s", serviceID, itemID), nil)
+			req, _ := http.NewRequest("DELETE", fmt.Sprintf("/services/%s/items/%s", serviceID, itemID), nil)
 			req.Header.Set("Content-Type", "application/json")
 			recorder := httptest.NewRecorder()
 			req = mux.SetURLVars(req, map[string]string{"serviceID": serviceID, "itemID": itemID})

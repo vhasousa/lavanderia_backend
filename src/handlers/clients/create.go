@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
+	"golang.org/x/crypto/bcrypt"
 )
 
 // CreateClient represents the creation of clients
@@ -71,10 +72,18 @@ func CreateClientHandler(db *sqlx.DB) http.HandlerFunc {
 			newClient.MonthlyDate = nil
 		}
 
+		newClient.Password = newClient.Phone
+
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(newClient.Password), bcrypt.DefaultCost)
+		if err != nil {
+			http.Error(w, "Failed to encrypt password", http.StatusInternalServerError)
+			return
+		}
+
 		// Insert the new user into the database
 		err = tx.QueryRow(
-			"INSERT INTO clients (first_name, last_name, username, is_admin, phone, is_mensal, address_id, monthly_date) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING first_name, last_name",
-			newClient.FirstName, newClient.LastName, newClient.Username, isAdmin, newClient.Phone, newClient.IsMonthly, newClient.AddressID, newClient.MonthlyDate,
+			"INSERT INTO clients (first_name, last_name, username, is_admin, phone, is_mensal, address_id, monthly_date, role, password) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING first_name, last_name",
+			newClient.FirstName, newClient.LastName, newClient.Username, isAdmin, newClient.Phone, newClient.IsMonthly, newClient.AddressID, newClient.MonthlyDate, "Client", hashedPassword,
 		).Scan(&newClient.FirstName, &newClient.LastName)
 
 		if err != nil {

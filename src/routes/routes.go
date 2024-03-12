@@ -6,6 +6,8 @@ import (
 	itemsserviceshandlers "lavanderia/handlers/laundryItemsServices"
 	serviceshandlers "lavanderia/handlers/laundryServices"
 	handlers "lavanderia/handlers/users"
+	middleware "lavanderia/middlewares"
+	"net/http"
 
 	"github.com/gorilla/mux"
 	"github.com/jmoiron/sqlx"
@@ -15,32 +17,38 @@ import (
 func SetupRoutes(db *sqlx.DB) *mux.Router {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/services/{serviceID}/items", itemsserviceshandlers.AddItemsServicesHandler(db)).Methods("POST")
-	router.HandleFunc("/services/{serviceID}/items/{itemID}", itemsserviceshandlers.DeleteItemServiceHandler(db)).Methods("DELETE")
-	router.HandleFunc("/services/{serviceID}/items/{itemID}", itemsserviceshandlers.UpdateItemServiceHandler(db)).Methods("PATCH")
+	// Wrap the routes you want to protect with JWTAuthentication middleware
+	protectedRoutes := router.PathPrefix("").Subrouter()
+	protectedRoutes.Use(middleware.JWTAuthentication)
 
-	router.HandleFunc("/items", itemshandlers.CreateItemHandler(db)).Methods("POST")
+	protectedRoutes.Handle("/services/{serviceID}/items", middleware.RoleAuthorization("Admin")(http.HandlerFunc(itemsserviceshandlers.AddItemsServicesHandler(db)))).Methods("POST")
+	protectedRoutes.Handle("/services/{serviceID}/items/{itemID}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(itemsserviceshandlers.DeleteItemServiceHandler(db)))).Methods("DELETE")
+	protectedRoutes.Handle("/services/{serviceID}/items/{itemID}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(itemsserviceshandlers.UpdateItemServiceHandler(db)))).Methods("PATCH")
+
+	protectedRoutes.Handle("/items", middleware.RoleAuthorization("Admin")(http.HandlerFunc(itemshandlers.CreateItemHandler(db)))).Methods("POST")
 	router.HandleFunc("/items", itemshandlers.ListItemsHandler(db)).Methods("GET")
 	router.HandleFunc("/items/{id}", itemshandlers.ShowItemHandler(db)).Methods("GET")
-	router.HandleFunc("/items/{id}", itemshandlers.DeleteItemHandler(db)).Methods("DELETE")
-	router.HandleFunc("/items/{id}", itemshandlers.UpdateItemHandler(db)).Methods("PUT")
+	protectedRoutes.Handle("/items/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(itemshandlers.DeleteItemHandler(db)))).Methods("DELETE")
+	protectedRoutes.Handle("/items/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(itemshandlers.UpdateItemHandler(db)))).Methods("PUT")
 
-	router.HandleFunc("/clients", clientshandlers.CreateClientHandler(db)).Methods("POST")
-	router.HandleFunc("/clients", clientshandlers.ListClientsHandler(db)).Methods("GET")
-	router.HandleFunc("/clients/{id}", clientshandlers.ShowClientHandler(db)).Methods("GET")
-	router.HandleFunc("/clients/{id}", clientshandlers.DeleteClientHandler(db)).Methods("DELETE")
-	router.HandleFunc("/clients/{id}", clientshandlers.UpdateClientHandler(db)).Methods("PUT")
+	protectedRoutes.Handle("/clients", middleware.RoleAuthorization("Admin")(http.Handler(clientshandlers.CreateClientHandler(db)))).Methods("POST")
+	protectedRoutes.Handle("/clients", middleware.RoleAuthorization("Admin")(http.HandlerFunc(clientshandlers.ListClientsHandler(db)))).Methods("GET")
+	protectedRoutes.Handle("/clients/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(clientshandlers.ShowClientHandler(db)))).Methods("GET")
+	protectedRoutes.Handle("/clients/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(clientshandlers.DeleteClientHandler(db)))).Methods("DELETE")
+	protectedRoutes.Handle("/clients/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(clientshandlers.UpdateClientHandler(db)))).Methods("PUT")
 
-	router.HandleFunc("/services", serviceshandlers.CreateServicesHandler(db)).Methods("POST")
-	router.HandleFunc("/services", serviceshandlers.ListServicesHandler(db)).Methods("GET")
-	router.HandleFunc("/services/{id}", serviceshandlers.ShowServiceHandler(db)).Methods("GET")
-	router.HandleFunc("/services/{id}", serviceshandlers.UpdateServiceHandler(db)).Methods("PUT")
-	router.HandleFunc("/services/{id}", serviceshandlers.DeleteServiceHandler(db)).Methods("DELETE")
+	protectedRoutes.Handle("/services", middleware.RoleAuthorization("Admin")(http.HandlerFunc(serviceshandlers.CreateServicesHandler(db)))).Methods("POST")
+	protectedRoutes.Handle("/services", middleware.RoleAuthorization("Admin")(http.HandlerFunc(serviceshandlers.ListServicesHandler(db)))).Methods("GET")
+	protectedRoutes.Handle("/services/client/{id}", middleware.RoleAuthorization("Admin", "Client")(http.HandlerFunc(serviceshandlers.ListServicesByClientHandler(db)))).Methods("GET")
+	protectedRoutes.Handle("/services/{id}", middleware.RoleAuthorization("Admin", "Client")(http.HandlerFunc(serviceshandlers.ShowServiceHandler(db)))).Methods("GET")
+	protectedRoutes.Handle("/services/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(serviceshandlers.UpdateServiceHandler(db)))).Methods("PUT")
+	protectedRoutes.Handle("/services/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(serviceshandlers.DeleteServiceHandler(db)))).Methods("DELETE")
 
-	router.HandleFunc("/users", handlers.CreateUserHandler(db)).Methods("POST")
-	router.HandleFunc("/users", handlers.ListUsersHandler(db)).Methods("GET")
-	router.HandleFunc("/users/{id}", handlers.UpdateUserHandler(db)).Methods("PATCH")
-	router.HandleFunc("/users/{id}", handlers.DeleteUserHandler(db)).Methods("DELETE")
+	router.HandleFunc("/login", handlers.LoginHandler(db)).Methods("POST")
+	protectedRoutes.Handle("/users", middleware.RoleAuthorization("Admin")(http.HandlerFunc(handlers.CreateUserHandler(db)))).Methods("POST")
+	protectedRoutes.Handle("/users", middleware.RoleAuthorization("Admin")(http.HandlerFunc(handlers.ListUsersHandler(db)))).Methods("GET")
+	protectedRoutes.Handle("/users/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(handlers.UpdateUserHandler(db)))).Methods("PATCH")
+	protectedRoutes.Handle("/users/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(handlers.DeleteUserHandler(db)))).Methods("DELETE")
 
 	return router
 }
