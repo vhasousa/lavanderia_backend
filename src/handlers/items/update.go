@@ -85,13 +85,5 @@ func validateUpdateItem(ctx context.Context, db sqlx.ExtContext, item entities.L
 		return ValidationError{Field: "id", Message: "No item with this ID exists", Status: http.StatusNotFound}
 	}
 
-	err = sqlx.GetContext(ctx, db, &exists, "SELECT EXISTS(SELECT 1 FROM laundry_items WHERE LOWER(name) = LOWER($1))", item.Name)
-	if err != nil {
-		return ValidationError{Field: "name", Message: "Failed to validate item name uniqueness", Status: http.StatusBadRequest}
-	}
-	if exists {
-		return ValidationError{Field: "name", Message: "An item with this name already exists", Status: http.StatusBadRequest}
-	}
-
 	return nil
 }

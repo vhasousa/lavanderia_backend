@@ -26,9 +26,6 @@ type LoginResponse struct {
 	Token string `json:"token"`
 }
 
-// Secret key used to sign tokens
-var jwtKey = []byte("my_secret_key")
-
 // User Define a struct to represent a User in the database
 type User struct {
 	ID       string `db:"id"`
@@ -54,15 +51,14 @@ func LoginHandler(db *sqlx.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		err := godotenv.Load()
 		if err != nil {
-			log.Fatal("Erro ao carregar o arquivo .env")
+			log.Fatal("Error loading .env file")
 		}
 
 		key := os.Getenv("JWT_KEY")
-
 		var jwtKey = []byte(key)
 
 		var req LoginRequest
-		if err = json.NewDecoder(r.Body).Decode(&req); err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
@@ -70,20 +66,12 @@ func LoginHandler(db *sqlx.DB) http.HandlerFunc {
 		var user User
 		err = db.Get(&user, "SELECT id, username, password, role FROM users WHERE username = $1", req.Username)
 		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"details": ValidationError{Message: "Usuário ou senha inválido", Status: http.StatusBadRequest},
-				"error":   "Authentication failed",
-			})
+			http.Error(w, "Invalid username or password", http.StatusBadRequest)
 			return
 		}
 
 		if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			json.NewEncoder(w).Encode(map[string]interface{}{
-				"details": ValidationError{Message: "Usuário ou senha inválido", Status: http.StatusBadRequest},
-				"error":   "Authentication failed",
-			})
+			http.Error(w, "Invalid username or password", http.StatusBadRequest)
 			return
 		}
 
@@ -101,11 +89,17 @@ func LoginHandler(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		resp := LoginResponse{
-			Token: tokenString,
-		}
+		http.SetCookie(w, &http.Cookie{
+			Name:     "auth_token",
+			Value:    tokenString,
+			Expires:  expirationTime,
+			HttpOnly: true,
+			Secure:   true,
+			Path:     "/",
+			SameSite: http.SameSiteStrictMode,
+		})
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(resp)
+		json.NewEncoder(w).Encode(map[string]string{"message": "Logged in successfully"})
 	}
 }

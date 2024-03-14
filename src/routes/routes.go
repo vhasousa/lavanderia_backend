@@ -49,6 +49,8 @@ func SetupRoutes(db *sqlx.DB) *mux.Router {
 	protectedRoutes.Handle("/users", middleware.RoleAuthorization("Admin")(http.HandlerFunc(handlers.ListUsersHandler(db)))).Methods("GET")
 	protectedRoutes.Handle("/users/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(handlers.UpdateUserHandler(db)))).Methods("PATCH")
 	protectedRoutes.Handle("/users/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(handlers.DeleteUserHandler(db)))).Methods("DELETE")
+	router.HandleFunc("/api/auth/status", handlers.AuthStatusHandler)
+	router.HandleFunc("/api/auth/logout", handlers.LogoutHandler)
 
 	return router
 }

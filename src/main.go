@@ -38,16 +38,23 @@ func main() {
 
 	routes := router.SetupRoutes(db)
 
-	appURL := os.Getenv("APP_URL")
-	appPort := os.Getenv("APP_PORT")
+	env := os.Getenv("ENV") // 'development' or 'production'
+	appURL := os.Getenv("FRONTEND_URL")
+	appPort := os.Getenv("FRONTEND_PORT")
 
-	app := fmt.Sprintf("%s:%s", appURL, appPort)
+	var address string
+	if env == "development" {
+		address = fmt.Sprintf("%s:%s", appURL, appPort)
+	} else { // In production, assume APP_URL includes any necessary port information or is routed correctly
+		address = appURL
+	}
 
 	// Configurar o CORS com as opções desejadas
 	c := cors.New(cors.Options{
-		AllowedOrigins: []string{app}, // Adicione a origem da sua aplicação Next.js aqui.
-		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
-		AllowedHeaders: []string{"Content-Type", "Authorization"},
+		AllowedOrigins:   []string{address}, // Replace "*" with your Next.js app origin
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization"},
+		AllowCredentials: true, // Important: this allows cookies and authorization headers
 	})
 
 	// Use o middleware CORS para envolver suas rotas

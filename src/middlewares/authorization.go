@@ -4,7 +4,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"strings"
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/joho/godotenv"
@@ -16,17 +15,31 @@ func RoleAuthorization(allowedRoles ...string) func(http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			err := godotenv.Load()
 			if err != nil {
-				log.Fatal("Erro ao carregar o arquivo .env")
+				log.Fatal("Error loading .env file")
 			}
 
-			key := os.Getenv("JWT_KEY")
+			jwtKey := os.Getenv("JWT_KEY")
 
-			var jwtKey = []byte(key)
+			// Retrieve the token from the cookie
+			cookie, err := r.Cookie("auth_token") // Replace "YourCookieName" with the actual cookie name
+			if err != nil {
+				if err == http.ErrNoCookie {
+					// If the cookie is not set, return an unauthorized status
+					http.Error(w, "No authentication cookie", http.StatusForbidden)
+					return
+				}
+				// For any other type of error, return a bad request status
+				http.Error(w, "Bad request", http.StatusBadRequest)
+				return
+			}
 
-			tokenString := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			// Get the JWT token string from the cookie
+			tokenStr := cookie.Value
+
+			// Parse the token with claims
 			claims := &jwt.MapClaims{}
-			_, err = jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-				return jwtKey, nil
+			_, err = jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+				return []byte(jwtKey), nil
 			})
 
 			if err != nil {
