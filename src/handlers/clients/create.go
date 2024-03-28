@@ -3,7 +3,6 @@ package clientshandlers
 import (
 	"encoding/json"
 	"net/http"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jmoiron/sqlx"
@@ -12,23 +11,23 @@ import (
 
 // CreateClient represents the creation of clients
 type CreateClient struct {
-	ID          uuid.UUID  `json:"id" db:"id"`
-	FirstName   string     `json:"first_name" db:"first_name"`
-	LastName    string     `json:"last_name" db:"last_name"`
-	Username    string     `json:"username" db:"username"`
-	Password    string     `json:"password" db:"password"`
-	Phone       string     `json:"phone" db:"phone"`
-	IsAdmin     bool       `json:"is_admin" db:"is_admin"`
-	IsMonthly   bool       `json:"is_monthly" db:"is_mensal"`
-	MonthlyDate *time.Time `json:"monthly_date" db:"monthly_date"`
-	AddressID   uuid.UUID  `json:"address_id" db:"address_id"`
-	Street      string     `json:"street" db:"street"`
-	City        string     `json:"city" db:"city"`
-	State       string     `json:"state" db:"state"`
-	PostalCode  string     `json:"postal_code" db:"postal_code"`
-	Number      string     `json:"number" db:"number"`
-	Complement  string     `json:"complement" db:"complement"`
-	Landmark    string     `json:"landmark" db:"landmark"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	FirstName   string    `json:"first_name" db:"first_name"`
+	LastName    string    `json:"last_name" db:"last_name"`
+	Username    string    `json:"username" db:"username"`
+	Password    string    `json:"password" db:"password"`
+	Phone       string    `json:"phone" db:"phone"`
+	IsAdmin     bool      `json:"is_admin" db:"is_admin"`
+	IsMonthly   bool      `json:"is_monthly" db:"is_mensal"`
+	MonthlyDate *string   `json:"monthly_date" db:"monthly_date"`
+	AddressID   uuid.UUID `json:"address_id" db:"address_id"`
+	Street      string    `json:"street" db:"street"`
+	City        string    `json:"city" db:"city"`
+	State       string    `json:"state" db:"state"`
+	PostalCode  string    `json:"postal_code" db:"postal_code"`
+	Number      string    `json:"number" db:"number"`
+	Complement  string    `json:"complement" db:"complement"`
+	Landmark    string    `json:"landmark" db:"landmark"`
 }
 
 // CreateClientHandler handles the creation of a new item

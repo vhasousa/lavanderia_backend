@@ -18,6 +18,7 @@ type LaundryServicesEntity struct {
 	Weight                  float64    `json:"weight"`
 	IsWeight                bool       `json:"is_weight"`
 	IsPiece                 bool       `json:"is_piece"`
+	IsMonthly               bool       `json:"is_monthly"`
 	ClientID                uuid.UUID  `json:"client_id"`
 	IsPaid                  bool       `json:"is_paid"`
 }

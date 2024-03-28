@@ -15,6 +15,7 @@ type ServiceDetail struct {
 	Items                   []ServiceItem `json:"items"`
 	Status                  string        `json:"status"`
 	TotalPrice              float64       `json:"total_price"`
+	IsMonthly               bool          `json:"is_monthly"`
 	IsPaid                  bool          `json:"is_paid"`
 	IsWeight                bool          `json:"is_weight"`
 	IsPiece                 bool          `json:"is_piece"`
@@ -83,7 +84,7 @@ func ShowServiceHandler(db *sqlx.DB) http.HandlerFunc {
 			ls.total_price, 
 			cli.id, 
 			cli.first_name, 
-			cli.last_name, ls.estimated_completion_date, ls.completed_at, ad.address_id, ad.street, ad.city, ad.state, ad.postal_code, ad.number, cli.phone
+			cli.last_name, ls.estimated_completion_date, ls.completed_at, ad.address_id, ad.street, ad.city, ad.state, ad.postal_code, ad.number, cli.phone, cli.is_mensal
 		FROM laundry_items_services lis
 			LEFT JOIN laundry_services ls ON lis.laundry_service_id = ls.id
 			LEFT JOIN laundry_items li ON lis.laundry_item_id = li.id
@@ -130,6 +131,7 @@ func ShowServiceHandler(db *sqlx.DB) http.HandlerFunc {
 				&service.PostalCode,
 				&service.Number,
 				&service.Phone,
+				&service.IsMonthly,
 			)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)

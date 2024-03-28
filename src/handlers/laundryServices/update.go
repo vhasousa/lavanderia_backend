@@ -151,6 +151,20 @@ func UpdateServiceHandler(db *sqlx.DB) http.HandlerFunc {
 			}
 		}
 
+		if updatedService.IsMonthly {
+			err = validateClientIsMensal(db, updatedService.ClientID)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"details": ValidationError{Field: "client_id", Message: err.Error(), Status: http.StatusBadRequest},
+					"error":   "Validation failed",
+				})
+				return
+			}
+
+			totalPrice = 0
+		}
+
 		// Update service information in the database
 		_, err = db.Exec(
 			"UPDATE laundry_services SET status=$1, is_paid=$2, completed_at=$3, estimated_completion_date=$4, is_weight=$5, is_piece=$6, total_price=$7, weight=$8, client_id=$9 WHERE id=$10",
@@ -180,6 +194,7 @@ func UpdateServiceHandler(db *sqlx.DB) http.HandlerFunc {
 }
 
 func calculateUpdatedTotalPrice(tx *sqlx.Tx, serviceID string) (float64, error) {
+
 	var items []entities.LaundryItemsServicesEntity
 
 	var price float64

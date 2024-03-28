@@ -36,6 +36,7 @@ func SetupRoutes(db *sqlx.DB) *mux.Router {
 	protectedRoutes.Handle("/clients/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(clientshandlers.ShowClientHandler(db)))).Methods("GET")
 	protectedRoutes.Handle("/clients/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(clientshandlers.DeleteClientHandler(db)))).Methods("DELETE")
 	protectedRoutes.Handle("/clients/{id}", middleware.RoleAuthorization("Admin")(http.HandlerFunc(clientshandlers.UpdateClientHandler(db)))).Methods("PUT")
+	protectedRoutes.Handle("/clients/{id}/renew", middleware.RoleAuthorization("Admin")(http.HandlerFunc(clientshandlers.RenewMonthlyFeeHandler(db)))).Methods("PATCH")
 
 	protectedRoutes.Handle("/services", middleware.RoleAuthorization("Admin")(http.HandlerFunc(serviceshandlers.CreateServicesHandler(db)))).Methods("POST")
 	protectedRoutes.Handle("/services", middleware.RoleAuthorization("Admin")(http.HandlerFunc(serviceshandlers.ListServicesHandler(db)))).Methods("GET")
