@@ -30,11 +30,12 @@ type LaundryService struct {
 		ItemQuantity  int       `json:"item_quantity"`
 		Observation   string    `json:"observation"`
 	} `json:"items"`
-	Weight   float64   `json:"weight"`
-	IsWeight bool      `json:"is_weight"`
-	IsPiece  bool      `json:"is_piece"`
-	ClientID uuid.UUID `json:"client_id"`
-	IsPaid   bool      `json:"is_paid"`
+	Weight    float64   `json:"weight"`
+	IsWeight  bool      `json:"is_weight"`
+	IsPiece   bool      `json:"is_piece"`
+	ClientID  uuid.UUID `json:"client_id"`
+	IsPaid    bool      `json:"is_paid"`
+	IsMonthly bool      `json:"is_monthly"`
 }
 
 // CreateServicesHandler handles the creation of a laundry services
@@ -100,6 +101,19 @@ func CreateServicesHandler(db *sqlx.DB) http.HandlerFunc {
 				"error":   "Validation failed",
 			})
 			return
+		}
+
+		if newService.IsMonthly {
+			err = validateClientIsMensal(db, newService.ClientID)
+			if err != nil {
+				w.WriteHeader(http.StatusBadRequest)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"details": ValidationError{Field: "client_id", Message: err.Error(), Status: http.StatusBadRequest},
+					"error":   "Validation failed",
+				})
+				return
+			}
+			newService.IsPaid = true
 		}
 
 		err = validateEstimatedCompletionDate(newService.EstimatedCompletionDate)
@@ -188,6 +202,10 @@ func insertLaundryItems(tx *sqlx.Tx, serviceID string, service LaundryService) e
 }
 
 func calculateTotalPrice(db *sqlx.DB, service LaundryService, w http.ResponseWriter) (float64, error) {
+	if service.IsMonthly {
+		return 0, nil
+	}
+
 	var price float64
 	var totalPrice float64
 
@@ -276,6 +294,32 @@ func validateEstimatedCompletionDate(date time.Time) error {
 	if date.After(maxAllowedDate) {
 		return fmt.Errorf("estimated completion date %s is beyond the acceptable threshold of 30 days", date.Format("2006-01-02"))
 	}
+
+	return nil
+}
+
+// ClientDetails holds the relevant details fetched from the database.
+type ClientDetails struct {
+	IsMensal bool `db:"is_mensal"`
+	// MonthlyDate time.Time `db:"monthly_date"`
+}
+
+func validateClientIsMensal(db *sqlx.DB, clientID uuid.UUID) error {
+	var details ClientDetails
+	query := `SELECT is_mensal FROM clients WHERE id = $1`
+
+	err := db.Get(&details, query, clientID)
+	if err != nil {
+		return fmt.Errorf("error checking client's details: %w", err)
+	}
+
+	if !details.IsMensal {
+		return fmt.Errorf("o cliente não está cadastrado como mensal")
+	}
+
+	// if details.MonthlyDate.Before(time.Now()) {
+	// 	return fmt.Errorf("a data mensal está no passado")
+	// }
 
 	return nil
 }

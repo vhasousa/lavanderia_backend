@@ -2,6 +2,7 @@ package clientshandlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
@@ -11,12 +12,13 @@ import (
 
 // UpdateClient is the interface of the return
 type UpdateClient struct {
-	ID        uuid.UUID `json:"id" db:"id"`
-	FirstName string    `json:"first_name" db:"first_name"`
-	LastName  string    `json:"last_name" db:"last_name"`
-	Phone     string    `json:"phone" db:"phone"`
-	Username  string    `json:"username" db:"username"`
-	IsMonthly bool      `json:"is_monthly" db:"is_mensal"`
+	ID          uuid.UUID `json:"id" db:"id"`
+	FirstName   string    `json:"first_name" db:"first_name"`
+	LastName    string    `json:"last_name" db:"last_name"`
+	Phone       string    `json:"phone" db:"phone"`
+	Username    string    `json:"username" db:"username"`
+	IsMonthly   bool      `json:"is_monthly" db:"is_mensal"`
+	MonthlyDate *string   `json:"monthly_date" db:"monthly_date"`
 
 	AddressID  uuid.UUID `json:"address_id" db:"address_id"`
 	Street     string    `json:"street" db:"street"`
@@ -82,8 +84,13 @@ func UpdateClientHandler(db *sqlx.DB) http.HandlerFunc {
 			return
 		}
 
-		// Update client information in the database
-		_, err = tx.Exec("UPDATE clients SET first_name=$1, last_name=$2, username=$3, phone=$4, is_mensal=$5  WHERE id=$6", updatedClient.FirstName, updatedClient.LastName, updatedClient.Username, updatedClient.Phone, updatedClient.IsMonthly, clientID)
+		if updatedClient.IsMonthly == false {
+			updatedClient.MonthlyDate = nil
+		}
+
+		_, err = tx.Exec("UPDATE clients SET first_name=$1, last_name=$2, username=$3, phone=$4, is_mensal=$5, monthly_date=$6  WHERE id=$7", updatedClient.FirstName, updatedClient.LastName, updatedClient.Username, updatedClient.Phone, updatedClient.IsMonthly, updatedClient.MonthlyDate, clientID)
+
+		fmt.Print(err)
 
 		if err != nil {
 			http.Error(w, "Error updating client in the database", http.StatusInternalServerError)
